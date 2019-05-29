@@ -10,11 +10,10 @@
 
 import os
 import base64
+from passlib.totp import TOTP
 
-import pyqrcode
 import onetimepass
-from flask import current_app as app, session, abort
-from flask_login import current_user
+from flask import current_app as app, session
 from werkzeug.local import LocalProxy
 
 from .utils import send_mail, config_value, get_message, do_flash,\
@@ -66,10 +65,9 @@ def get_totp_uri(username, totp_secret):
     :param totp_secret: a unique shared secret of the user
     :return:
     """
+    tp = TOTP(totp_secret)
     service_name = config_value('TWO_FACTOR_URI_SERVICE_NAME')
-
-    return 'otpauth://totp/{0}:{1}?secret={2}&issuer={0}'\
-        .format(service_name, username, totp_secret)
+    return tp.to_uri(username + '@' + service_name, service_name)
 
 
 def verify_totp(token, totp_secret, window=0):
@@ -95,38 +93,8 @@ def generate_totp():
     return base64.b32encode(os.urandom(10)).decode('utf-8')
 
 
-def generate_qrcode():
-    """generate the qrcode for the two factor authentication process"""
-    if 'google_authenticator' not in\
-            config_value('TWO_FACTOR_ENABLED_METHODS'):
-        return abort(404)
-    if 'primary_method' not in session or\
-        session['primary_method'] != 'google_authenticator' \
-            or 'totp_secret' not in session:
-        return abort(404)
-
-    if 'email' in session:
-        email = session['email']
-    elif 'password_confirmed' in session:
-        email = current_user.email
-    else:
-        return abort(404)
-
-    name = email.split('@')[0]
-    totp = session['totp_secret']
-    url = pyqrcode.create(get_totp_uri(name, totp))
-    from io import BytesIO
-    stream = BytesIO()
-    url.svg(stream, scale=3)
-    return stream.getvalue(), 200, {
-        'Content-Type': 'image/svg+xml',
-        'Cache-Control': 'no-cache, no-store, must-revalidate',
-        'Pragma': 'no-cache',
-        'Expires': '0'}
-
-
 def complete_two_factor_process(user):
-    """clean session according to process (login or changing two factor method)
+    """clean session according to process (login or changing two-factor method)
      and perform action accordingly
     :param user - user's to update in database and log in if necessary
     """
@@ -145,7 +113,7 @@ def complete_two_factor_process(user):
     del session['primary_method']
     del session['totp_secret']
 
-    # if we are changing two factor method
+    # if we are changing two-factor method
     if 'password_confirmed' in session:
         del session['password_confirmed']
         do_flash(*get_message('TWO_FACTOR_CHANGE_METHOD_SUCCESSFUL'))

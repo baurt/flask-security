@@ -70,7 +70,7 @@ def test_two_factor_two_factor_setup_function_anonymous(app, client):
 
 
 def test_two_factor_flag(app, client):
-    # trying to verify code without going through two factor
+    # trying to verify code without going through two-factor
     # first login function
     wrong_code = b'000000'
     response = client.post('/two_factor_token_validation/',
@@ -101,7 +101,7 @@ def test_two_factor_flag(app, client):
                            follow_redirects=True)
     assert b'Invalid password' in response.data
 
-    # Test two factor authentication first login
+    # Test two-factor authentication first login
     data = dict(email="matt@lp.com", password="password")
     response = client.post('/login', data=data, follow_redirects=True)
     message = b'Two-factor authentication adds an extra layer of security'
@@ -131,7 +131,7 @@ def test_two_factor_flag(app, client):
     response = client.post('/login', data=json_data,
                            headers={'Content-Type': 'application/json'},
                            follow_redirects=True)
-    assert b'Please enter your authentication code' in response.data
+    assert b'"code": 200' in response.data
     assert sms_sender.get_count() == 1
 
     code = sms_sender.messages[0].split()[-1]
@@ -187,7 +187,7 @@ def test_two_factor_flag(app, client):
     response = client.post('/two_factor_token_validation/',
                            data=dict(code=code),
                            follow_redirects=True)
-    assert b'You successfully changed your two factor method' in response.data
+    assert b'You successfully changed your two-factor method' in response.data
 
     # Test change two_factor password confirmation view to google authenticator
     password = 'password'
@@ -199,7 +199,7 @@ def test_two_factor_flag(app, client):
     setup_data = dict(setup='google_authenticator')
     response = client.post('/two_factor_setup_function/',
                            data=setup_data, follow_redirects=True)
-    print(response.data)
+
     assert b'Open Google Authenticator on your device' in response.data
     qrcode_page_response = client.get('/two_factor_qrcode/', data=setup_data,
                                       follow_redirects=True)
@@ -222,7 +222,7 @@ def test_two_factor_flag(app, client):
 
     logout(client)
 
-    # Test two factor authentication first login
+    # Test two-factor authentication first login
     data = dict(email="matt@lp.com", password="password")
     response = client.post('/login', data=data, follow_redirects=True)
     message = b'Two-factor authentication adds an extra layer of security'
@@ -238,9 +238,10 @@ def test_two_factor_flag(app, client):
     response = client.post('/two_factor_setup_function/',
                            data=setup_data, follow_redirects=True)
     assert b'Open Google Authenticator on your device' in response.data
-    print(response.data)
+
     qrcode_page_response = client.get('/two_factor_qrcode/', data=setup_data,
                                       follow_redirects=True)
+    print(qrcode_page_response)
     assert b'svg' in qrcode_page_response.data
 
     # check appearence of setup page when sms picked and phone number entered
@@ -264,7 +265,7 @@ def test_two_factor_flag(app, client):
     response = client.post('/two_factor_rescue_function/',
                            data=rescue_data_json,
                            headers={'Content-Type': 'application/json'})
-    assert response.status_code == 404
+    assert b'"code": 400' in response.data
 
     # check when two_factor_rescue function should appear
     data = dict(email="gal2@lp.com", password="password")

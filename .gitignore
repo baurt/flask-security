@@ -27,6 +27,7 @@ pip-log.txt
 
 #Virtualenv
 env/
+.venv/
 
 #Editor temporaries
 *~
